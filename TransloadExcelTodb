@@ -85,7 +85,7 @@ Begin
                     End
                     Else
                     Begin
-                        //MyScript.Script.Add('(' + sOrigin + ', ' + sDate + ', ' + sBilling + ', ' + sConnote + ', ' + sConsignee + ', ' + sDestination + ', ' + sAmount + ', NOW()),');
+                        
                         sExec.Add('(' + sOrigin + ', ' + sDate + ', ' + sBilling + ', ' + sConnote + ', ' + sConsignee + ', ' + sDestination + ', ' + sAmount + ', NOW()),');
                     End;
                     Inc(pline, 1);
