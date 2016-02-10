@@ -44,9 +44,6 @@ Begin
 
         RangeMatrix := XLApp.Range['A1', XLApp.Cells.Item[X, Y]].Value;
         //  Define the loop for filling in the Buffers
-        MyScript.Script.Clear;
-        PB.Properties.Max := x;
-        PB.Position := 0;
         k := 1;
         PLine := 0;
         repeat
@@ -95,7 +92,6 @@ Begin
                 End;
             End;
             Inc(k, 1);
-            PB.Position := k;
 //            Application.ProcessMessages;
         until k > x;
     // Unassign the Delphi Variant Matrix
