@@ -1,0 +1,129 @@
+Uses ComObj, StrUtils //--> Should be
+
+
+Procedure TfCODTransload.TransloadExcelTodb(aFileName : String);
+    Function FormatExelDate (sD : String) : String;
+    Var
+        y, m , d : String;
+    Begin
+        y := RightStr(sD, 4);
+        d := LeftStr(sD, 2);
+        m := MidStr(sD, 4, 2);
+        Result := y + '-' + m + '-' + d;
+    End;
+
+
+const
+  xlCellTypeLastCell = $0000000B;
+
+var
+  XLApp, Sheet: OLEVariant;
+  RangeMatrix: Variant;
+  x, y, k, r: Integer;
+  aTmpStr : String;
+  sOrigin, sDate, sBilling, sConnote, sConsignee, sDestination, sAmount : String;
+  sExec : TStringList;
+  PLine : Integer;
+
+
+
+Begin
+    XLApp := CreateOleObject('Excel.Application');
+    sExec := TStringList.Create;
+    Screen.Cursor := crSQLWait;
+    try
+        XLApp.Visible := False;
+        XLApp.Workbooks.Open(aFileName);
+        Sheet := XLApp.Workbooks[ExtractFileName(aFileName)].WorkSheets[1];
+        Sheet.Cells.SpecialCells(xlCellTypeLastCell, EmptyParam).Activate;
+        // Get the value of the last row
+        x := XLApp.ActiveCell.Row;
+        // Get the value of the last column
+        y := XLApp.ActiveCell.Column;
+        // Assign the Variant associated with the WorkSheet to the Delphi Variant
+
+        RangeMatrix := XLApp.Range['A1', XLApp.Cells.Item[X, Y]].Value;
+        //  Define the loop for filling in the Buffers
+        MyScript.Script.Clear;
+        PB.Properties.Max := x;
+        PB.Position := 0;
+        k := 1;
+        PLine := 0;
+        repeat
+            //for r := 1 to y do AGrid.Cells[(r - 1), (k - 1)] := RangeMatrix[K, R];
+            aTmpStr := VarToStr (RangeMatrix[K, 7]);
+            if (aTmpStr <> '') AND (aTmpStr <> 'Destination') Then
+            Begin
+                aTmpStr := VarToStr (RangeMatrix[K, 5]);
+                if (aTmpStr <> '') AND (aTmpStr <> 'Connote#') Then
+                Begin
+                    aTmpStr := VarToStr (RangeMatrix[K, 2]);
+                    if (aTmpStr <> '') AND (sOrigin <> aTmpStr) Then sOrigin := QuotedStr (aTmpStr);
+
+                    sDate := VarToStr (RangeMatrix[K, 3]);
+                    if sDate <> '' Then sDate := QuotedStr(FormatExelDate(sDate)) Else sDate := 'NULL';
+                    sBilling := VarToStr (RangeMatrix[K, 4]);
+                    if sBilling <> '' Then sBilling := QuotedStr(sBilling) Else sBilling := 'NULL';
+                    sConnote := VarToStr (RangeMatrix[K, 5]);
+                    sConnote := QuotedStr(sConnote);
+                    sConsignee := VarToStr (RangeMatrix[K, 6]);
+                    if sConsignee <> '' Then sConsignee := QuotedStr(sConsignee) else sConsignee := 'NULL';
+                    sDestination := VarToStr (RangeMatrix[K, 7]);
+                    if sDestination <> '' Then sDestination := QuotedStr(sDestination) else sDestination := 'NULL';
+                    sAmount := VarToStr (RangeMatrix[K, 8]);
+                    if sAmount = '' Then sAmount := '0';
+
+                    if PLine = 0 Then
+                    Begin
+                        sExec.Add('INSERT IGNORE INTO dbtranscod (sOrigin, dDate, sBillingNum, sConnote, sConsignee, sDestination, cAmount, dTransload) VALUES ');
+                        //MyScript.Script.Add('INSERT IGNORE INTO dbtranscod (sOrigin, dDate, sBillingNum, sConnote, sConsignee, sDestination, cAmount, dTransload) VALUES ');
+                    End;
+
+                    if PLine >= 99 Then
+                    Begin
+                        PLine := -1;
+                        //MyScript.Script.Add('(' + sOrigin + ', ' + sDate + ', ' + sBilling + ', ' + sConnote + ', ' + sConsignee + ', ' + sDestination + ', ' + sAmount + ', NOW());');
+                        sExec.Add('(' + sOrigin + ', ' + sDate + ', ' + sBilling + ', ' + sConnote + ', ' + sConsignee + ', ' + sDestination + ', ' + sAmount + ', NOW());');
+
+                    End
+                    Else
+                    Begin
+                        //MyScript.Script.Add('(' + sOrigin + ', ' + sDate + ', ' + sBilling + ', ' + sConnote + ', ' + sConsignee + ', ' + sDestination + ', ' + sAmount + ', NOW()),');
+                        sExec.Add('(' + sOrigin + ', ' + sDate + ', ' + sBilling + ', ' + sConnote + ', ' + sConsignee + ', ' + sDestination + ', ' + sAmount + ', NOW()),');
+                    End;
+                    Inc(pline, 1);
+                End;
+            End;
+            Inc(k, 1);
+            PB.Position := k;
+//            Application.ProcessMessages;
+        until k > x;
+    // Unassign the Delphi Variant Matrix
+        RangeMatrix := Unassigned;
+        r := sExec.Count - 1;
+        aTmpStr := sExec.Strings[r];
+        aTmpStr := LeftStr(aTmpStr,length (aTmpStr) -1) + ';';
+        sExec.Strings[r] := aTmpStr;
+        sExec.SaveToFile(ExtractFilePath(cxButtonEdit1.Text) + 'TmpTrx.bin');
+        MyScript.Script.LoadFromFile(ExtractFilePath(cxButtonEdit1.Text) + 'TmpTrx.bin');
+        MyScript.Execute;
+        DeleteFile(ExtractFilePath(cxButtonEdit1.Text) + 'TmpTrx.bin');
+
+
+    finally
+       // Quit Excel
+        if not VarIsEmpty(XLApp) then
+        begin
+          // XLApp.DisplayAlerts := False;
+          XLApp.Quit;
+          XLAPP := Unassigned;
+          Sheet := Unassigned;
+        end;
+        FreeAndNil(sExec);
+        Screen.Cursor := crDefault;
+    end;
+
+    Msg_Information('Transload Done');
+
+
+End;
